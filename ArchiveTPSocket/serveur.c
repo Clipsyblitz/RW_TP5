@@ -55,23 +55,24 @@ int main(int argc, char *argv[])
 	serveur_appli(service);
 }
 
-void interprete_answer(char *code, char *receive, char *answer)
+void interprete_answer(char *code, char *receive, char *answer, int difficulty)
 {
 	if (receive[0] != '!')
 	{
 
 		int ok_couleur = 0, ok_place = 0, couleur_presente = 0;
-		for (int i = 0; i < 5; i++)
+		for (int i = 0; i < difficulty; i++)
 		{
-			for (int j = 0; j < 5; j++)
+			for (int j = 0; j < 8; j++)
 			{
 				if (i == j && code[i] == receive[i])
 				{
 					ok_place++;
-					ok_couleur++;
+					if (couleur_presente)
+						ok_couleur--;
 					couleur_presente = 1;
 				}
-				if (couleur_presente != 1 && receive[i] == code[j])
+				else if (couleur_presente != 1 && receive[i] == code[j])
 				{
 					couleur_presente = 1;
 					ok_couleur++;
@@ -80,20 +81,21 @@ void interprete_answer(char *code, char *receive, char *answer)
 			couleur_presente = 0;
 		}
 
-		answer[0] = ok_couleur;
-		answer[1] = ok_place;
+		answer[1] = ok_couleur;
+		answer[0] = ok_place;
 	}
 	else
 		answer[0] = '@';
 }
 
-void init_code(char *code, char *color)
+void init_code(char *code, char *color, int difficulty)
 {
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < difficulty; i++)
 	{
 		code[i] = color[rand() % 5];
 	}
 }
+
 /******************************************************************************/
 void serveur_appli(char *service)
 
@@ -104,7 +106,7 @@ void serveur_appli(char *service)
 
 	srand(time(NULL));
 
-	char color[5] = {'r', 'v', 'b', 'j', 'n'};
+	char color[8] = {'r', 'v', 'B', 'b', 'j', 'o', 'V', 'f'};
 
 	// Initialisation des sockets
 
@@ -120,35 +122,43 @@ void serveur_appli(char *service)
 
 	int id_active = h_accept(id_passive, s);
 
+	char *buffer = (char *)malloc(sizeof(char));
+
 	// Envoie des couleurs disponibles au client
 
-	h_writes(id_active, color, 5);
+	h_writes(id_active, color, 8);
 
+	// Récupération de la difficulté
+
+	h_reads(id_active, buffer, 1);
+	int difficulty = *buffer - 40;
 	// Envoie du nombre de vies au client
 
 	h_writes(id_active, "10", 2);
 
 	// Initialisation du code
-
-	char code[5];
-	init_code(code, color);
+	
+	char code[difficulty];
+	init_code(code, color, difficulty);
 
 	// Récupération des message et interpretation
 
-	char receive[5];
+	char receive[difficulty];
 	char answer[2];
 
-	while (!(strcmp(receive, "!!!!!") == 0))
+	while (receive[0] != '!')
 	{
-		h_reads(id_active, receive, 5);
+		h_reads(id_active, receive, difficulty);
 
-		interprete_answer(code, receive, answer);
+		interprete_answer(code, receive, answer, difficulty);
 
 		if (answer[0] != '@')
 		{
 			h_writes(id_active, answer, 2);
 		}
 	}
+
+	// Fermeture des sockets
 
 	h_close(id_passive);
 	h_close(id_active);

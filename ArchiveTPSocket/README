@@ -1,0 +1,9 @@
+Pour lancer le jeu il suffit de :
+
+-> utiliser la commande make
+
+-> lancer la commande ./serveur sur un terminal
+
+-> lancer la commande ./client <ip> sur un autre terminal
+
+-> enjoy !
